@@ -1,0 +1,13 @@
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.ipa
+*.dSYM.zip
+*.mobileprovision
+*.p12
+.env
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+.build/
+Package.resolved
