@@ -38,7 +38,8 @@ public struct Category: Identifiable, Codable, Hashable {
         slug = try container.decodeIfPresent(String.self, forKey: .slug)
         url = try container.decodeIfPresent(URL.self, forKey: .url)
         let liveImageURL = try container.decodeIfPresent(URL.self, forKey: .primaryImage)
-        imageURL = liveImageURL ?? (try container.decodeIfPresent(URL.self, forKey: .imageURL))
+        let fallbackImageURL = try container.decodeIfPresent(URL.self, forKey: .imageURL)
+        imageURL = liveImageURL ?? fallbackImageURL
         children = try container.decodeIfPresent([Category].self, forKey: .children) ?? []
     }
 

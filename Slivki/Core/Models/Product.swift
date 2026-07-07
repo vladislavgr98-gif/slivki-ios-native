@@ -104,7 +104,8 @@ public struct Product: Identifiable, Codable, Hashable {
         }
 
         let liveImageURL = try container.decodeIfPresent(URL.self, forKey: .primaryImage)
-        imageURL = liveImageURL ?? (try container.decodeIfPresent(URL.self, forKey: .imageURL))
+        let fallbackImageURL = try container.decodeIfPresent(URL.self, forKey: .imageURL)
+        imageURL = liveImageURL ?? fallbackImageURL
 
         let decodedPrice: Decimal?
         if let priceContainer = try? container.nestedContainer(keyedBy: PriceKeys.self, forKey: .price) {
