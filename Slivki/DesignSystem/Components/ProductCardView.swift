@@ -11,13 +11,7 @@ public struct ProductCardView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: SlivkiSpacing.sm) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(SlivkiColor.groupedBackground)
-                .aspectRatio(1.15, contentMode: .fit)
-                .overlay {
-                    Image(systemName: "photo")
-                        .foregroundStyle(SlivkiColor.textSecondary)
-                }
+            productImage
 
             Text(product.title)
                 .font(.subheadline.weight(.semibold))
@@ -26,12 +20,12 @@ public struct ProductCardView: View {
                 .frame(minHeight: 38, alignment: .topLeading)
 
             HStack(alignment: .firstTextBaseline) {
-                Text(SlivkiMoney.format(product.price))
+                Text(SlivkiMoney.format(product.price, currencyCode: product.currency))
                     .font(.headline)
                     .foregroundStyle(SlivkiColor.textPrimary)
 
                 if let oldPrice = product.oldPrice {
-                    Text(SlivkiMoney.format(oldPrice))
+                    Text(SlivkiMoney.format(oldPrice, currencyCode: product.currency))
                         .font(.caption)
                         .foregroundStyle(SlivkiColor.textSecondary)
                         .strikethrough()
@@ -52,5 +46,40 @@ public struct ProductCardView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(SlivkiColor.border, lineWidth: 1)
         )
+    }
+
+    private var productImage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(SlivkiColor.groupedBackground)
+
+            if let imageURL = product.imageURL {
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .padding(SlivkiSpacing.xs)
+                    case .failure:
+                        placeholderImage
+                    case .empty:
+                        ProgressView()
+                    @unknown default:
+                        placeholderImage
+                    }
+                }
+            } else {
+                placeholderImage
+            }
+        }
+        .aspectRatio(1.15, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var placeholderImage: some View {
+        Image(systemName: "photo")
+            .font(.title2)
+            .foregroundStyle(SlivkiColor.textSecondary)
     }
 }

@@ -1,14 +1,17 @@
 import SwiftUI
 
 public struct HomeView: View {
+    @Environment(\.apiClient) private var apiClient
     @EnvironmentObject private var cartStore: CartStore
     @EnvironmentObject private var router: AppRouter
-    private let products: [Product]
-    private let categories: [Category]
+    @State private var state: LoadState<BootstrapResponse> = .idle
+
+    private let fallbackProducts: [Product]
+    private let fallbackCategories: [Category]
 
     public init(products: [Product] = Fixtures.products, categories: [Category] = Fixtures.categories) {
-        self.products = products
-        self.categories = categories
+        self.fallbackProducts = products
+        self.fallbackCategories = categories
     }
 
     public var body: some View {
@@ -16,27 +19,52 @@ public struct HomeView: View {
             VStack(alignment: .leading, spacing: SlivkiSpacing.md) {
                 header
                 searchButton
-                banner
+                statusBanner
                 categoryStrip
                 productGrid
             }
             .padding(SlivkiSpacing.md)
         }
         .background(SlivkiColor.groupedBackground)
-        .navigationTitle("Сливки")
+        .navigationTitle(siteName)
         .slivkiInlineNavigationTitle()
+        .task {
+            await loadBootstrap()
+        }
+    }
+
+    private var loadedBootstrap: BootstrapResponse? {
+        if case .loaded(let response) = state {
+            return response
+        }
+        return nil
+    }
+
+    private var siteName: String {
+        loadedBootstrap?.site?.name ?? "Сливки"
+    }
+
+    private var categories: [Category] {
+        let loaded = loadedBootstrap?.categories ?? []
+        return loaded.isEmpty ? fallbackCategories : loaded
+    }
+
+    private var products: [Product] {
+        let loaded = loadedBootstrap?.featuredProducts.items ?? []
+        return loaded.isEmpty ? fallbackProducts : loaded
     }
 
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: SlivkiSpacing.xs) {
-                Text("Сливки")
+                Text(siteName)
                     .font(.title2.weight(.bold))
                     .foregroundStyle(SlivkiColor.textPrimary)
 
-                Label(Fixtures.city.title, systemImage: "location")
+                Label(loadedBootstrap?.site?.address ?? Fixtures.city.title, systemImage: "location")
                     .font(.subheadline)
                     .foregroundStyle(SlivkiColor.textSecondary)
+                    .lineLimit(1)
             }
 
             Spacer()
@@ -64,18 +92,39 @@ public struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private var banner: some View {
-        VStack(alignment: .leading, spacing: SlivkiSpacing.sm) {
-            Text("Выгодные покупки рядом")
-                .font(.headline)
-            Text("Нативный экран повторяет смысл мобильного сайта, но не встраивает его как WebView.")
-                .font(.subheadline)
-                .foregroundStyle(SlivkiColor.textSecondary)
+    @ViewBuilder
+    private var statusBanner: some View {
+        switch state {
+        case .idle, .loading:
+            HStack(spacing: SlivkiSpacing.sm) {
+                ProgressView()
+                Text("Загружаем каталог")
+                    .font(.subheadline)
+                    .foregroundStyle(SlivkiColor.textSecondary)
+            }
+            .padding(SlivkiSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SlivkiColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: SlivkiSpacing.sm) {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(SlivkiColor.textSecondary)
+                Button("Повторить") {
+                    Task {
+                        await loadBootstrap()
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(SlivkiSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SlivkiColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        case .loaded:
+            EmptyView()
         }
-        .padding(SlivkiSpacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SlivkiColor.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private var categoryStrip: some View {
@@ -90,7 +139,7 @@ public struct HomeView: View {
                             router.navigate(to: .category(id: category.id, title: category.title), in: .catalog)
                         } label: {
                             CategoryTileView(category: category)
-                                .frame(width: 140)
+                                .frame(width: 150)
                         }
                         .buttonStyle(.plain)
                     }
@@ -114,6 +163,22 @@ public struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func loadBootstrap() async {
+        state = .loading
+
+        do {
+            let response: BootstrapResponse = try await apiClient.get(.bootstrap)
+            guard !Task.isCancelled else {
+                return
+            }
+            state = .loaded(response)
+        } catch is CancellationError {
+            return
+        } catch {
+            state = .failed("Не удалось загрузить каталог. Показываем сохраненные товары.")
         }
     }
 }

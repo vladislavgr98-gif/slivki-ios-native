@@ -54,7 +54,7 @@ private struct AppRouteView: View {
     var body: some View {
         switch route {
         case .category(let id, let title):
-            ProductListPlaceholderView(title: title, subtitle: "Категория \(id)")
+            ProductListView(categoryID: id, title: title)
         case .product(let id):
             ProductDetailView(productID: id)
         case .search(let query):
@@ -66,14 +66,5 @@ private struct AppRouteView: View {
         case .legal(let path):
             LegalWebView(path: path)
         }
-    }
-}
-
-private struct ProductListPlaceholderView: View {
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        EmptyStateView(title, systemImage: "shippingbox", message: subtitle)
     }
 }

@@ -167,6 +167,32 @@ final class APIClientTests: XCTestCase {
         }
     }
 
+    func testClientUnwrapsProductDetailEnvelope() async throws {
+        let session = MockSession(
+            data: """
+            {
+              "success": true,
+              "meta": { "apiVersion": "mobile-v1", "generatedAt": "2026-07-07T07:41:19+00:00" },
+              "data": {
+                "product": {
+                  "id": 5118,
+                  "title": "Средство для мытья посуды FAIRY",
+                  "price": { "current": 195, "old": null, "currency": "RUB" },
+                  "stock": { "count": 3, "available": true }
+                }
+              }
+            }
+            """.data(using: .utf8)!,
+            response: HTTPURLResponse(url: URL(string: "https://slivki-shop.ru")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        )
+        let client = APIClient(session: session)
+        let response: ProductDetailResponse = try await client.get(.product(id: "5118"))
+
+        XCTAssertEqual(response.product.id, "5118")
+        XCTAssertEqual(response.product.price, Decimal(195))
+        XCTAssertEqual(session.lastRequest?.url?.path, "/api/mobile/v1/products/5118")
+    }
+
     func testPostNoResponseAccepts204() async throws {
         let session = MockSession(
             data: Data(),

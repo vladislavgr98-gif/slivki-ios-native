@@ -94,6 +94,7 @@ paths:
       parameters:
         - name: category_id
           in: query
+          description: Category id. Products from descendant categories are included.
           schema:
             type: integer
             minimum: 1
