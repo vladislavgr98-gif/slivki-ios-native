@@ -49,20 +49,40 @@ public struct APIClient {
     }
 
     private func send<T: Decodable>(_ endpoint: APIEndpoint, method: String, body: Data?) async throws -> T {
-        let data = try await rawSend(endpoint, method: method, body: body)
+        let (data, http) = try await rawSend(endpoint, method: method, body: body)
+
+        if !(200...299).contains(http.statusCode) {
+            throw decodeServerError(from: data) ?? APIError.httpStatus(http.statusCode)
+        }
 
         do {
+            if let envelope = try? decoder.decode(APIEnvelope<T>.self, from: data) {
+                guard envelope.success else {
+                    throw envelope.apiError ?? APIError.invalidResponse
+                }
+                guard let payload = envelope.data else {
+                    throw APIError.invalidResponse
+                }
+                return payload
+            }
+
             return try decoder.decode(T.self, from: data)
+        } catch let error as APIError {
+            throw error
         } catch {
             throw APIError.decodingFailed(error.localizedDescription)
         }
     }
 
     private func sendNoResponse(_ endpoint: APIEndpoint, method: String, body: Data?) async throws {
-        _ = try await rawSend(endpoint, method: method, body: body)
+        let (data, http) = try await rawSend(endpoint, method: method, body: body)
+
+        guard (200...299).contains(http.statusCode) else {
+            throw decodeServerError(from: data) ?? APIError.httpStatus(http.statusCode)
+        }
     }
 
-    private func rawSend(_ endpoint: APIEndpoint, method: String, body: Data?) async throws -> Data {
+    private func rawSend(_ endpoint: APIEndpoint, method: String, body: Data?) async throws -> (Data, HTTPURLResponse) {
         var components = URLComponents(url: baseURL.appending(path: endpoint.path), resolvingAgainstBaseURL: false)
         components?.queryItems = endpoint.queryItems.isEmpty ? nil : endpoint.queryItems
 
@@ -86,16 +106,25 @@ public struct APIClient {
             guard let http = response as? HTTPURLResponse else {
                 throw APIError.invalidResponse
             }
-            guard (200...299).contains(http.statusCode) else {
-                throw APIError.httpStatus(http.statusCode)
-            }
 
-            return data
+            return (data, http)
         } catch let error as APIError {
             throw error
         } catch {
             throw APIError.networkUnavailable(error.localizedDescription)
         }
+    }
+
+    private func decodeServerError(from data: Data) -> APIError? {
+        guard !data.isEmpty else {
+            return nil
+        }
+
+        if let envelope = try? decoder.decode(APIEnvelope<EmptyPayload>.self, from: data), let apiError = envelope.apiError {
+            return apiError
+        }
+
+        return nil
     }
 
     private func encode<Body: Encodable>(_ body: Body) throws -> Data {

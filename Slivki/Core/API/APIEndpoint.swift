@@ -34,12 +34,16 @@ public enum APIEndpoint {
     public var queryItems: [URLQueryItem] {
         switch self {
         case .products(let categoryID, let query, let sort, let page, let perPage):
+            let safePage = max(page, 1)
+            let safePerPage = min(max(perPage, 1), 100)
+            let offset = (safePage - 1) * safePerPage
+
             [
                 categoryID.map { URLQueryItem(name: "category_id", value: $0) },
                 query.map { URLQueryItem(name: "q", value: $0) },
                 URLQueryItem(name: "sort", value: sort.rawValue),
-                URLQueryItem(name: "page", value: String(page)),
-                URLQueryItem(name: "per_page", value: String(perPage))
+                URLQueryItem(name: "offset", value: String(offset)),
+                URLQueryItem(name: "limit", value: String(safePerPage))
             ].compactMap { $0 }
         default:
             []
@@ -49,8 +53,7 @@ public enum APIEndpoint {
 
 public enum ProductSort: String, Codable, CaseIterable {
     case popular
-    case newest
+    case new
     case priceAsc = "price_asc"
     case priceDesc = "price_desc"
-    case discountDesc = "discount_desc"
 }

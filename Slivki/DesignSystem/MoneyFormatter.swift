@@ -1,7 +1,7 @@
 import Foundation
 
 public enum SlivkiMoney {
-    public static func format(_ amount: Decimal, currencyCode: String = "BYN") -> String {
+    public static func format(_ amount: Decimal, currencyCode: String = "RUB") -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = currencyCode

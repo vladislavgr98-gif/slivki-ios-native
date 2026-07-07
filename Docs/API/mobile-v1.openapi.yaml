@@ -2,86 +2,104 @@ openapi: 3.1.0
 info:
   title: Slivki Mobile API
   version: 1.0.0
-  summary: Native iOS MVP API contract for slivki-shop.ru
+  summary: Production read-only mobile API for the native iOS app
   description: >
-    Contract for the native SwiftUI Slivki iOS MVP. The mobile app consumes JSON
-    API responses only and must not scrape or parse slivki-shop.ru HTML pages.
+    Current v1 contract exposed by slivki-shop.ru for the native SwiftUI app.
+    Responses are JSON only and use the common success/meta/data envelope.
+    Cart, auth, orders, and push endpoints are planned for the next backend phase.
 servers:
   - url: https://slivki-shop.ru/api/mobile/v1
-    description: Production mobile API
+    description: Production
 tags:
+  - name: Health
   - name: Bootstrap
   - name: Catalog
   - name: Products
-  - name: Cart
-  - name: Auth
-  - name: Orders
-  - name: Push
-security:
-  - bearerAuth: []
 paths:
-  /bootstrap:
+  /health:
     get:
-      tags: [Bootstrap]
-      summary: Load application bootstrap data
-      operationId: getBootstrap
-      security: []
-      parameters:
-        - $ref: '#/components/parameters/AcceptLanguage'
-        - $ref: '#/components/parameters/CityId'
+      tags: [Health]
+      summary: Check mobile API availability
+      operationId: getHealth
       responses:
-        '200':
-          description: Bootstrap data for the app shell
+        "200":
+          description: API is available
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BootstrapResponse'
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [status]
+                        properties:
+                          status:
+                            type: string
+                            const: ok
         default:
-          $ref: '#/components/responses/Error'
+          $ref: "#/components/responses/Error"
+  /bootstrap:
+    get:
+      tags: [Bootstrap]
+      summary: Load app shell data
+      operationId: getBootstrap
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Site, app, navigation, and featured products
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/BootstrapData"
+        default:
+          $ref: "#/components/responses/Error"
   /catalog:
     get:
       tags: [Catalog]
       summary: List catalog categories
       operationId: getCatalog
-      security: []
-      parameters:
-        - $ref: '#/components/parameters/CityId'
-        - name: include_empty
-          in: query
-          description: Include categories without active products.
-          schema:
-            type: boolean
-            default: false
       responses:
-        '200':
-          description: Catalog tree
+        "200":
+          description: Category tree
           content:
             application/json:
               schema:
-                type: object
-                required: [categories]
-                properties:
-                  categories:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Category'
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [categories]
+                        properties:
+                          categories:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Category"
         default:
-          $ref: '#/components/responses/Error'
+          $ref: "#/components/responses/Error"
   /products:
     get:
       tags: [Products]
-      summary: Search and list products
+      summary: List and search active products
       operationId: listProducts
-      security: []
       parameters:
-        - $ref: '#/components/parameters/CityId'
         - name: category_id
           in: query
           schema:
-            type: string
+            type: integer
+            minimum: 1
         - name: q
           in: query
-          description: Search query.
+          description: Case-insensitive title search.
           schema:
             type: string
             minLength: 1
@@ -89,620 +107,340 @@ paths:
           in: query
           schema:
             type: string
-            enum: [popular, newest, price_asc, price_desc, discount_desc]
-            default: popular
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
+            enum: [new, popular, price_asc, price_desc]
+            default: new
+        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
-          description: Paginated product list
+        "200":
+          description: Product list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductListResponse'
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ProductListData"
         default:
-          $ref: '#/components/responses/Error'
+          $ref: "#/components/responses/Error"
   /products/{id}:
     get:
       tags: [Products]
       summary: Get product details
       operationId: getProduct
-      security: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
-            type: string
-        - $ref: '#/components/parameters/CityId'
-      responses:
-        '200':
-          description: Product details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Product'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        default:
-          $ref: '#/components/responses/Error'
-  /cart:
-    get:
-      tags: [Cart]
-      summary: Get current cart
-      operationId: getCart
-      responses:
-        '200':
-          description: Current cart
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Cart'
-        default:
-          $ref: '#/components/responses/Error'
-    put:
-      tags: [Cart]
-      summary: Replace current cart contents
-      operationId: putCart
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CartUpdateRequest'
-      responses:
-        '200':
-          description: Updated cart
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Cart'
-        '409':
-          description: Cart has unavailable products or changed prices.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        default:
-          $ref: '#/components/responses/Error'
-  /auth/login:
-    post:
-      tags: [Auth]
-      summary: Sign in with phone and code
-      operationId: login
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '200':
-          description: Authenticated user and tokens
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
-          description: Invalid or expired login code.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        default:
-          $ref: '#/components/responses/Error'
-  /orders:
-    get:
-      tags: [Orders]
-      summary: List current user orders
-      operationId: listOrders
-      parameters:
-        - name: page
-          in: query
-          schema:
             type: integer
             minimum: 1
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 50
-            default: 20
       responses:
-        '200':
-          description: User order history
+        "200":
+          description: Product detail
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrderListResponse'
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [product]
+                        properties:
+                          product:
+                            $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/Error"
         default:
-          $ref: '#/components/responses/Error'
-    post:
-      tags: [Orders]
-      summary: Create order from cart
-      operationId: createOrder
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateOrderRequest'
-      responses:
-        '201':
-          description: Created order
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '422':
-          description: Order validation failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        default:
-          $ref: '#/components/responses/Error'
-  /push-token:
-    post:
-      tags: [Push]
-      summary: Register APNs device token
-      operationId: registerPushToken
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PushTokenRequest'
-      responses:
-        '204':
-          description: Token registered
-        default:
-          $ref: '#/components/responses/Error'
+          $ref: "#/components/responses/Error"
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   parameters:
-    AcceptLanguage:
-      name: Accept-Language
-      in: header
-      schema:
-        type: string
-        examples: [ru-RU]
-    CityId:
-      name: city_id
+    Offset:
+      name: offset
       in: query
-      description: Selected city identifier.
       schema:
-        type: string
+        type: integer
+        minimum: 0
+        default: 0
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
   responses:
     Error:
-      description: Error response
+      description: Error envelope
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
-    BootstrapResponse:
+    SuccessEnvelope:
       type: object
-      required: [cities, selected_city, categories, banners, user, cart]
+      required: [success, meta, data]
       properties:
-        cities:
-          type: array
-          items:
-            $ref: '#/components/schemas/City'
-        selected_city:
-          $ref: '#/components/schemas/City'
-        categories:
-          type: array
-          items:
-            $ref: '#/components/schemas/Category'
-        banners:
-          type: array
-          items:
-            $ref: '#/components/schemas/Banner'
-        user:
-          anyOf:
-            - $ref: '#/components/schemas/User'
-            - type: 'null'
-        cart:
-          $ref: '#/components/schemas/Cart'
-        feature_flags:
+        success:
+          type: boolean
+          const: true
+        meta:
+          $ref: "#/components/schemas/Meta"
+        data:
           type: object
-          additionalProperties:
-            type: boolean
-    ProductListResponse:
+    ErrorEnvelope:
       type: object
-      required: [items, pagination]
+      required: [success, error]
       properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Product'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    OrderListResponse:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              examples: [not_found, method_not_allowed, internal_error]
+            message:
+              type: string
+    Meta:
       type: object
-      required: [items, pagination]
+      required: [apiVersion, generatedAt]
       properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Order'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    Product:
+        apiVersion:
+          type: string
+          const: mobile-v1
+        generatedAt:
+          type: string
+          format: date-time
+    BootstrapData:
       type: object
-      required:
-        - id
-        - title
-        - price
-        - unit
-        - is_available
+      required: [site, app, navigation, featuredProducts]
+      properties:
+        site:
+          $ref: "#/components/schemas/SiteInfo"
+        app:
+          $ref: "#/components/schemas/AppInfo"
+        navigation:
+          type: object
+          required: [categories]
+          properties:
+            categories:
+              type: array
+              items:
+                $ref: "#/components/schemas/Category"
+        featuredProducts:
+          $ref: "#/components/schemas/ProductListData"
+    SiteInfo:
+      type: object
+      required: [name, host]
+      properties:
+        name:
+          type: string
+        host:
+          type: string
+          format: uri
+        phone:
+          type: string
+        address:
+          type: string
+        hours:
+          type: string
+    AppInfo:
+      type: object
+      required: [iosBundleId, iosAppStoreId, iosMinimumVersion, currency, locale]
+      properties:
+        iosBundleId:
+          type: string
+          examples: [com.app.slivki]
+        iosAppStoreId:
+          type: string
+          examples: ["6757003701"]
+        iosMinimumVersion:
+          type: string
+          examples: ["13.0"]
+        currency:
+          type: string
+          const: RUB
+        locale:
+          type: string
+          examples: [ru_RU]
+    Category:
+      type: object
+      required: [id, parentId, title, slug, url, children]
       properties:
         id:
+          type: integer
+        parentId:
+          type:
+            - integer
+            - "null"
+        title:
           type: string
         slug:
           type: string
+        url:
+          type:
+            - string
+            - "null"
+          format: uri
+        primaryImage:
+          type:
+            - string
+            - "null"
+          format: uri
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageSet"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+    ProductListData:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        filters:
+          type: object
+          additionalProperties: true
+    Product:
+      type: object
+      required: [id, title, url, category, price, stock, type, badges, images, description]
+      properties:
+        id:
+          type: integer
         title:
           type: string
-        subtitle:
+        slug:
           type: string
-        description:
-          type: string
-        category_id:
-          type: string
-        price:
-          type: number
-          format: decimal
-          minimum: 0
-          description: Current display price in the product currency.
-        old_price:
-          type:
-            - number
-            - 'null'
-          format: decimal
-          minimum: 0
-        unit:
-          type: string
-          examples: [шт]
-        currency:
-          type: string
-          minLength: 3
-          maxLength: 3
-          default: BYN
-          examples: [BYN]
-        discount_percent:
-          type: integer
-          minimum: 0
-          maximum: 100
-        is_available:
-          type: boolean
-        image_url:
+        url:
           type:
             - string
-            - 'null'
+            - "null"
           format: uri
-        seller_title:
+        category:
+          type: object
+          required: [id, title, slug]
+          properties:
+            id:
+              type:
+                - integer
+                - "null"
+            title:
+              type:
+                - string
+                - "null"
+            slug:
+              type:
+                - string
+                - "null"
+        price:
+          type: object
+          required: [current, old, currency]
+          properties:
+            current:
+              type:
+                - number
+                - "null"
+            old:
+              type:
+                - number
+                - "null"
+            currency:
+              type: string
+              const: RUB
+        stock:
+          type: object
+          required: [count, available]
+          properties:
+            count:
+              type: integer
+              minimum: 0
+            available:
+              type: boolean
+        type:
+          type: string
+        sku:
           type:
             - string
-            - 'null'
+            - "null"
+        barcode:
+          type:
+            - string
+            - "null"
         badges:
           type: array
           items:
             type: string
-        deeplink:
-          type: string
-          format: uri
-        updated_at:
-          type: string
-          format: date-time
-    Category:
-      type: object
-      required: [id, title]
-      properties:
-        id:
-          type: string
-        parent_id:
+        primaryImage:
           type:
             - string
-            - 'null'
-        title:
+            - "null"
+          format: uri
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageSet"
+        description:
           type: string
-        image_url:
+        dimensions:
+          type: object
+          properties:
+            widthSm:
+              type:
+                - number
+                - "null"
+            heightSm:
+              type:
+                - number
+                - "null"
+            lengthSm:
+              type:
+                - number
+                - "null"
+            weightKg:
+              type:
+                - number
+                - "null"
+    ImageSet:
+      type: object
+      properties:
+        small:
           type: string
           format: uri
-        sort_order:
-          type: integer
-        children:
-          type: array
-          items:
-            $ref: '#/components/schemas/Category'
-    Cart:
-      type: object
-      required: [id, items, totals, currency]
-      properties:
-        id:
-          type: string
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/CartItem'
-        totals:
-          $ref: '#/components/schemas/CartTotals'
-        currency:
-          type: string
-          minLength: 3
-          maxLength: 3
-        updated_at:
-          type: string
-          format: date-time
-    CartItem:
-      type: object
-      required: [id, product_id, title, quantity, price]
-      properties:
-        id:
-          type: string
-        product_id:
-          type: string
-        product:
-          $ref: '#/components/schemas/Product'
-        quantity:
-          type: integer
-          minimum: 1
-        title:
-          type: string
-        price:
-          type: number
-          format: decimal
-          minimum: 0
-        line_total:
-          type: number
-          format: decimal
-          minimum: 0
-        selected_options:
-          type: array
-          items:
-            $ref: '#/components/schemas/CartItemOption'
-    CartItemOption:
-      type: object
-      required: [id, title, price_delta]
-      properties:
-        id:
-          type: string
-        title:
-          type: string
-        price_delta:
-          type: number
-          format: decimal
-    CartTotals:
-      type: object
-      required: [items_total, discount_total, payable_total]
-      properties:
-        items_total:
-          type: number
-          format: decimal
-          minimum: 0
-        discount_total:
-          type: number
-          format: decimal
-          minimum: 0
-        delivery_total:
-          type: number
-          format: decimal
-          minimum: 0
-        payable_total:
-          type: number
-          format: decimal
-          minimum: 0
-    CartUpdateRequest:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items:
-            type: object
-            required: [product_id, quantity]
-            properties:
-              product_id:
-                type: string
-              quantity:
-                type: integer
-                minimum: 0
-                description: Zero removes the item.
-    Order:
-      type: object
-      required: [id, number, status, items, totals, created_at]
-      properties:
-        id:
-          type: string
-        number:
-          type: string
-        status:
-          type: string
-          enum: [new, confirmed, paid, assembling, shipped, completed, cancelled]
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/CartItem'
-        totals:
-          $ref: '#/components/schemas/CartTotals'
-        delivery_address:
-          $ref: '#/components/schemas/Address'
-        contact_phone:
-          type: string
-        comment:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    CreateOrderRequest:
-      type: object
-      required: [cart_id, contact_phone]
-      properties:
-        cart_id:
-          type: string
-        delivery_address:
-          $ref: '#/components/schemas/Address'
-        contact_phone:
-          type: string
-        comment:
-          type: string
-          maxLength: 1000
-    User:
-      type: object
-      required: [id]
-      properties:
-        id:
-          type: string
-        phone:
-          type: string
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-        city:
-          $ref: '#/components/schemas/City'
-    City:
-      type: object
-      required: [id, title]
-      properties:
-        id:
-          type: string
-        title:
-          type: string
-        timezone:
-          type: string
-          examples: [Europe/Moscow]
-        is_default:
-          type: boolean
-    Banner:
-      type: object
-      required: [id, image_url, target]
-      properties:
-        id:
-          type: string
-        title:
-          type: string
-        image_url:
+        normal:
           type: string
           format: uri
-        target:
-          $ref: '#/components/schemas/BannerTarget'
-    BannerTarget:
-      type: object
-      required: [type]
-      properties:
-        type:
+        big:
           type: string
-          enum: [product, category, url, none]
-        value:
+          format: uri
+        original:
           type: string
-    LoginRequest:
-      type: object
-      required: [phone, code]
-      properties:
-        phone:
-          type: string
-        code:
-          type: string
-          minLength: 4
-          maxLength: 8
-    LoginResponse:
-      type: object
-      required: [access_token, token_type, user]
-      properties:
-        access_token:
-          type: string
-        refresh_token:
-          type: string
-        token_type:
-          type: string
-          const: Bearer
-        expires_in:
-          type: integer
-          minimum: 1
-        user:
-          $ref: '#/components/schemas/User'
-    PushTokenRequest:
-      type: object
-      required: [token, platform]
-      properties:
-        token:
-          type: string
-        platform:
-          type: string
-          const: ios
-        environment:
-          type: string
-          enum: [sandbox, production]
-        device_id:
-          type: string
-    Address:
-      type: object
-      required: [city_id, line1]
-      properties:
-        city_id:
-          type: string
-        line1:
-          type: string
-        line2:
-          type: string
-        entrance:
-          type: string
-        floor:
-          type: string
-        apartment:
-          type: string
+          format: uri
     Pagination:
       type: object
-      required: [page, per_page, total]
+      required: [offset, limit, count]
       properties:
-        page:
-          type: integer
-          minimum: 1
-        per_page:
-          type: integer
-          minimum: 1
-        total:
+        offset:
           type: integer
           minimum: 0
-    ErrorResponse:
-      type: object
-      required: [code, message]
-      properties:
-        code:
-          type: string
-          examples: [validation_error]
-        message:
-          type: string
-        details:
-          type: object
-          additionalProperties: true
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        count:
+          type: integer
+          minimum: 0

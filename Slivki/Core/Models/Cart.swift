@@ -15,7 +15,7 @@ public struct Cart: Codable, Equatable {
         id: String = "local",
         items: [CartItem],
         totals: CartTotals,
-        currency: String = "BYN",
+        currency: String = "RUB",
         updatedAt: Date? = nil
     ) {
         self.id = id

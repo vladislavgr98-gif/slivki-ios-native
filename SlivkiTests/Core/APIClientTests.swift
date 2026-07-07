@@ -3,47 +3,47 @@ import XCTest
 @testable import Slivki
 
 final class APIClientTests: XCTestCase {
-    func testProductDecodesFromMobileAPIShape() throws {
+    func testProductDecodesFromLiveMobileAPIShape() throws {
         let json = """
         {
-          "id": "123",
-          "title": "Мороженое Азарт",
-          "category_id": "frozen",
-          "image_url": "https://slivki-shop.ru/upload/item.png",
-          "price": 149.90,
-          "old_price": 179.90,
-          "unit": "шт",
-          "is_available": true,
-          "seller_title": "Сливки"
+          "id": 5118,
+          "title": "Средство для мытья посуды FAIRY",
+          "slug": "promtovary/fairy",
+          "category": { "id": 13730, "title": "Средство для мытья посуды", "slug": null },
+          "primaryImage": "https://slivki-shop.ru/upload/item.webp",
+          "price": { "current": 195, "old": null, "currency": "RUB" },
+          "stock": { "count": 3, "available": true },
+          "badges": ["new"]
         }
         """.data(using: .utf8)!
 
         let product = try JSONDecoder.slivki.decode(Product.self, from: json)
 
-        XCTAssertEqual(product.id, "123")
-        XCTAssertEqual(product.title, "Мороженое Азарт")
-        XCTAssertEqual(product.categoryID, "frozen")
-        XCTAssertEqual(product.imageURL?.absoluteString, "https://slivki-shop.ru/upload/item.png")
+        XCTAssertEqual(product.id, "5118")
+        XCTAssertEqual(product.title, "Средство для мытья посуды FAIRY")
+        XCTAssertEqual(product.categoryID, "13730")
+        XCTAssertEqual(product.imageURL?.absoluteString, "https://slivki-shop.ru/upload/item.webp")
+        XCTAssertEqual(product.price, Decimal(195))
+        XCTAssertEqual(product.currency, "RUB")
         XCTAssertTrue(product.isAvailable)
-        XCTAssertEqual(product.sellerTitle, "Сливки")
+        XCTAssertEqual(product.badges, ["new"])
     }
 
-    func testProductListResponseDecodesFromContractShape() throws {
+    func testProductListResponseDecodesFromLiveDataShape() throws {
         let json = """
         {
           "items": [
             {
-              "id": "123",
-              "title": "Мороженое Азарт",
-              "price": 149.90,
-              "unit": "шт",
-              "is_available": true
+              "id": 5118,
+              "title": "Средство для мытья посуды FAIRY",
+              "price": { "current": 195, "old": null, "currency": "RUB" },
+              "stock": { "count": 0, "available": false }
             }
           ],
           "pagination": {
-            "page": 1,
-            "per_page": 20,
-            "total": 1
+            "offset": 0,
+            "limit": 20,
+            "count": 1
           }
         }
         """.data(using: .utf8)!
@@ -51,16 +51,20 @@ final class APIClientTests: XCTestCase {
         let response = try JSONDecoder.slivki.decode(ProductListResponse.self, from: json)
 
         XCTAssertEqual(response.items.count, 1)
-        XCTAssertEqual(response.pagination.perPage, 20)
+        XCTAssertEqual(response.pagination.limit, 20)
+        XCTAssertEqual(response.pagination.count, 1)
     }
 
-    func testCatalogResponseDecodesWhenCategoryChildrenAreMissing() throws {
+    func testCatalogResponseDecodesFromLiveCategoryShape() throws {
         let json = """
         {
           "categories": [
             {
-              "id": "frozen",
-              "title": "Заморозка"
+              "id": 13896,
+              "parentId": 1,
+              "title": "Готовая еда",
+              "primaryImage": "https://slivki-shop.ru/upload/category.webp",
+              "children": []
             }
           ]
         }
@@ -68,44 +72,31 @@ final class APIClientTests: XCTestCase {
 
         let response = try JSONDecoder.slivki.decode(CatalogResponse.self, from: json)
 
-        XCTAssertEqual(response.categories[0].id, "frozen")
+        XCTAssertEqual(response.categories[0].id, "13896")
+        XCTAssertEqual(response.categories[0].parentID, "1")
+        XCTAssertEqual(response.categories[0].imageURL?.absoluteString, "https://slivki-shop.ru/upload/category.webp")
         XCTAssertTrue(response.categories[0].children.isEmpty)
     }
 
-    func testBootstrapResponseDecodesWhenOptionalFeatureFlagsAndBannerTitleAreMissing() throws {
+    func testBootstrapResponseDecodesFromLiveShape() throws {
         let json = """
         {
-          "cities": [
-            { "id": "minsk", "title": "Минск" }
-          ],
-          "selected_city": { "id": "minsk", "title": "Минск" },
-          "categories": [],
-          "banners": [
-            {
-              "id": "hero",
-              "image_url": "https://slivki-shop.ru/upload/banner.png",
-              "target": { "type": "none" }
-            }
-          ],
-          "user": null,
-          "cart": {
-            "id": "cart",
+          "site": { "name": "Сливки", "host": "https://slivki-shop.ru" },
+          "app": { "iosBundleId": "com.app.slivki", "currency": "RUB", "locale": "ru_RU" },
+          "navigation": { "categories": [] },
+          "featuredProducts": {
             "items": [],
-            "totals": {
-              "items_total": 0,
-              "discount_total": 0,
-              "payable_total": 0
-            },
-            "currency": "BYN"
+            "pagination": { "offset": 0, "limit": 3, "count": 0 }
           }
         }
         """.data(using: .utf8)!
 
         let response = try JSONDecoder.slivki.decode(BootstrapResponse.self, from: json)
 
-        XCTAssertEqual(response.featureFlags, [:])
-        XCTAssertEqual(response.banners[0].title, "")
-        XCTAssertEqual(response.cart.total, 0)
+        XCTAssertEqual(response.site?.name, "Сливки")
+        XCTAssertEqual(response.app?.iosBundleID, "com.app.slivki")
+        XCTAssertEqual(response.categories, [])
+        XCTAssertEqual(response.featuredProducts.items, [])
     }
 
     func testCartItemDecodesWhenSelectedOptionsAreMissing() throws {
@@ -126,26 +117,54 @@ final class APIClientTests: XCTestCase {
         XCTAssertTrue(item.selectedOptions.isEmpty)
     }
 
-    func testClientBuildsProductsQuery() async throws {
+    func testClientBuildsProductsQueryAndUnwrapsEnvelope() async throws {
         let session = MockSession(
             data: """
             {
-              "items": [],
-              "pagination": { "page": 2, "per_page": 20, "total": 0 }
+              "success": true,
+              "meta": { "apiVersion": "mobile-v1", "generatedAt": "2026-07-07T07:41:19+00:00" },
+              "data": {
+                "items": [],
+                "pagination": { "offset": 20, "limit": 20, "count": 0 }
+              }
             }
             """.data(using: .utf8)!,
             response: HTTPURLResponse(url: URL(string: "https://slivki-shop.ru")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
         )
         let client = APIClient(session: session, accessToken: { "token" })
-        let _: ProductListResponse = try await client.get(.products(categoryID: "frozen", query: "ice", sort: .popular, page: 2, perPage: 20))
+        let response: ProductListResponse = try await client.get(.products(categoryID: "13730", query: "fairy", sort: .popular, page: 2, perPage: 20))
 
+        XCTAssertEqual(response.pagination.offset, 20)
         XCTAssertEqual(session.lastRequest?.url?.path, "/api/mobile/v1/products")
-        XCTAssertEqual(session.lastRequest?.url?.query?.contains("category_id=frozen"), true)
-        XCTAssertEqual(session.lastRequest?.url?.query?.contains("q=ice"), true)
+        XCTAssertEqual(session.lastRequest?.url?.query?.contains("category_id=13730"), true)
+        XCTAssertEqual(session.lastRequest?.url?.query?.contains("q=fairy"), true)
         XCTAssertEqual(session.lastRequest?.url?.query?.contains("sort=popular"), true)
-        XCTAssertEqual(session.lastRequest?.url?.query?.contains("page=2"), true)
-        XCTAssertEqual(session.lastRequest?.url?.query?.contains("per_page=20"), true)
+        XCTAssertEqual(session.lastRequest?.url?.query?.contains("offset=20"), true)
+        XCTAssertEqual(session.lastRequest?.url?.query?.contains("limit=20"), true)
         XCTAssertEqual(session.lastRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer token")
+    }
+
+    func testClientThrowsAPIErrorFromEnvelope() async throws {
+        let session = MockSession(
+            data: """
+            {
+              "success": false,
+              "error": { "code": "not_found", "message": "Endpoint not found" }
+            }
+            """.data(using: .utf8)!,
+            response: HTTPURLResponse(url: URL(string: "https://slivki-shop.ru")!, statusCode: 404, httpVersion: nil, headerFields: nil)!
+        )
+        let client = APIClient(session: session)
+
+        do {
+            let _: CatalogResponse = try await client.get(.catalog)
+            XCTFail("Expected API error")
+        } catch let APIError.server(code, message) {
+            XCTAssertEqual(code, "not_found")
+            XCTAssertEqual(message, "Endpoint not found")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     func testPostNoResponseAccepts204() async throws {
