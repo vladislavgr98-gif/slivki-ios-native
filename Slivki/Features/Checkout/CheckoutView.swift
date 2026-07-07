@@ -14,18 +14,22 @@ public struct CheckoutView: View {
         let draft = CheckoutDraft(customerName: customerName, phone: phone, city: city, address: address)
 
         Form {
-            Section("Контакты") {
+            Section {
                 TextField("Имя", text: $customerName)
                 TextField("Телефон", text: $phone)
                     .slivkiKeyboardType(.phonePad)
+            } header: {
+                Text("Контакты")
             }
 
-            Section("Доставка") {
+            Section {
                 TextField("Город", text: $city)
                 TextField("Адрес", text: $address)
+            } header: {
+                Text("Доставка")
             }
 
-            Section("Заказ") {
+            Section {
                 HStack {
                     Text("Итого")
                     Spacer()
@@ -38,6 +42,8 @@ public struct CheckoutView: View {
                     Label("Подтвердить заказ", systemImage: "checkmark.circle")
                 }
                 .disabled(cartStore.isEmpty || !draft.isValid)
+            } header: {
+                Text("Заказ")
             } footer: {
                 if let message = draft.validationErrors.first?.message {
                     Text(message)

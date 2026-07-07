@@ -78,6 +78,16 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
         quantity = try container.decode(Int.self, forKey: .quantity)
         selectedOptions = try container.decodeIfPresent([CartItemOption].self, forKey: .selectedOptions) ?? []
     }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(productID, forKey: .productID)
+        try container.encode(title, forKey: .title)
+        try container.encode(price, forKey: .price)
+        try container.encode(quantity, forKey: .quantity)
+        try container.encode(selectedOptions, forKey: .selectedOptions)
+    }
 }
 
 public struct CartTotals: Codable, Equatable, Hashable {

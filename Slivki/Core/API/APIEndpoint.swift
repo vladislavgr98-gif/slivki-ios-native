@@ -13,21 +13,21 @@ public enum APIEndpoint {
     public var path: String {
         switch self {
         case .bootstrap:
-            "/bootstrap"
+            return "/bootstrap"
         case .catalog:
-            "/catalog"
+            return "/catalog"
         case .products:
-            "/products"
+            return "/products"
         case .product(let id):
-            "/products/\(id)"
+            return "/products/\(id)"
         case .cart:
-            "/cart"
+            return "/cart"
         case .login:
-            "/auth/login"
+            return "/auth/login"
         case .orders:
-            "/orders"
+            return "/orders"
         case .pushToken:
-            "/push-token"
+            return "/push-token"
         }
     }
 
@@ -38,7 +38,7 @@ public enum APIEndpoint {
             let safePerPage = min(max(perPage, 1), 100)
             let offset = (safePage - 1) * safePerPage
 
-            [
+            return [
                 categoryID.map { URLQueryItem(name: "category_id", value: $0) },
                 query.map { URLQueryItem(name: "q", value: $0) },
                 URLQueryItem(name: "sort", value: sort.rawValue),
@@ -46,7 +46,7 @@ public enum APIEndpoint {
                 URLQueryItem(name: "limit", value: String(safePerPage))
             ].compactMap { $0 }
         default:
-            []
+            return []
         }
     }
 }
