@@ -18,7 +18,7 @@ public final class CartStore: ObservableObject {
     }
 
     public func add(product: Product, quantity: Int = 1) {
-        guard product.isAvailable, quantity > 0 else {
+        guard product.canBeAddedToCart, quantity > 0 else {
             return
         }
 

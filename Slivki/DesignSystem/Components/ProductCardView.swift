@@ -20,11 +20,17 @@ public struct ProductCardView: View {
                 .frame(minHeight: 38, alignment: .topLeading)
 
             HStack(alignment: .firstTextBaseline) {
-                Text(SlivkiMoney.format(product.price, currencyCode: product.currency))
-                    .font(.headline)
-                    .foregroundStyle(SlivkiColor.textPrimary)
+                if product.hasPrice {
+                    Text(SlivkiMoney.format(product.price, currencyCode: product.currency))
+                        .font(.headline)
+                        .foregroundStyle(SlivkiColor.textPrimary)
+                } else {
+                    Text("Цена уточняется")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(SlivkiColor.textSecondary)
+                }
 
-                if let oldPrice = product.oldPrice {
+                if product.hasPrice, let oldPrice = product.oldPrice {
                     Text(SlivkiMoney.format(oldPrice, currencyCode: product.currency))
                         .font(.caption)
                         .foregroundStyle(SlivkiColor.textSecondary)
@@ -33,11 +39,11 @@ public struct ProductCardView: View {
             }
 
             Button(action: onAdd) {
-                Label(product.isAvailable ? "В корзину" : "Нет в наличии", systemImage: "cart.badge.plus")
+                Label(product.canBeAddedToCart ? "В корзину" : "Недоступно", systemImage: "cart.badge.plus")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!product.isAvailable)
+            .disabled(!product.canBeAddedToCart)
         }
         .padding(SlivkiSpacing.sm)
         .background(SlivkiColor.surface)

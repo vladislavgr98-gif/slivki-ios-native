@@ -7,6 +7,7 @@ public struct Product: Identifiable, Codable, Hashable {
     public let categoryID: String?
     public let imageURL: URL?
     public let price: Decimal
+    public let hasPrice: Bool
     public let oldPrice: Decimal?
     public let currency: String
     public let unit: String
@@ -16,6 +17,10 @@ public struct Product: Identifiable, Codable, Hashable {
     public let badges: [String]
     public let description: String
 
+    public var canBeAddedToCart: Bool {
+        isAvailable && hasPrice
+    }
+
     public init(
         id: String,
         title: String,
@@ -23,6 +28,7 @@ public struct Product: Identifiable, Codable, Hashable {
         categoryID: String? = nil,
         imageURL: URL?,
         price: Decimal,
+        hasPrice: Bool = true,
         oldPrice: Decimal? = nil,
         currency: String = "RUB",
         unit: String = "шт",
@@ -38,6 +44,7 @@ public struct Product: Identifiable, Codable, Hashable {
         self.categoryID = categoryID
         self.imageURL = imageURL
         self.price = price
+        self.hasPrice = hasPrice
         self.oldPrice = oldPrice
         self.currency = currency
         self.unit = unit
@@ -99,15 +106,18 @@ public struct Product: Identifiable, Codable, Hashable {
         let liveImageURL = try container.decodeIfPresent(URL.self, forKey: .primaryImage)
         imageURL = liveImageURL ?? (try container.decodeIfPresent(URL.self, forKey: .imageURL))
 
+        let decodedPrice: Decimal?
         if let priceContainer = try? container.nestedContainer(keyedBy: PriceKeys.self, forKey: .price) {
-            price = try priceContainer.decode(Decimal.self, forKey: .current)
+            decodedPrice = try priceContainer.decodeIfPresent(Decimal.self, forKey: .current)
             oldPrice = try priceContainer.decodeIfPresent(Decimal.self, forKey: .old)
             currency = try priceContainer.decodeIfPresent(String.self, forKey: .currency) ?? "RUB"
         } else {
-            price = try container.decode(Decimal.self, forKey: .price)
+            decodedPrice = try container.decodeIfPresent(Decimal.self, forKey: .price)
             oldPrice = try container.decodeIfPresent(Decimal.self, forKey: .oldPrice)
             currency = try container.decodeIfPresent(String.self, forKey: .currency) ?? "RUB"
         }
+        price = decodedPrice ?? .zero
+        hasPrice = decodedPrice != nil
 
         unit = try container.decodeIfPresent(String.self, forKey: .unit) ?? "шт"
 
@@ -131,7 +141,9 @@ public struct Product: Identifiable, Codable, Hashable {
         try container.encodeIfPresent(slug, forKey: .slug)
         try container.encodeIfPresent(categoryID, forKey: .categoryID)
         try container.encodeIfPresent(imageURL, forKey: .imageURL)
-        try container.encode(price, forKey: .price)
+        if hasPrice {
+            try container.encode(price, forKey: .price)
+        }
         try container.encodeIfPresent(oldPrice, forKey: .oldPrice)
         try container.encode(currency, forKey: .currency)
         try container.encode(unit, forKey: .unit)

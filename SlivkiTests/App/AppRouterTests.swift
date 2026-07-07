@@ -21,6 +21,24 @@ final class AppRouterTests: XCTestCase {
         XCTAssertEqual(router.routes(for: .profile), [.legal(path: "/pages/rules.html")])
     }
 
+    func testCatalogURLRoutesToCategory() throws {
+        let router = AppRouter()
+        let result = router.handle(url: try XCTUnwrap(URL(string: "https://slivki-shop.ru/catalog/13730")))
+
+        XCTAssertEqual(result, .handled)
+        XCTAssertEqual(router.selectedTab, .catalog)
+        XCTAssertEqual(router.routes(for: .catalog), [.category(id: "13730", title: "13730")])
+    }
+
+    func testCategoryURLRoutesToCategory() throws {
+        let router = AppRouter()
+        let result = router.handle(url: try XCTUnwrap(URL(string: "https://slivki-shop.ru/category/gotovaya-eda")))
+
+        XCTAssertEqual(result, .handled)
+        XCTAssertEqual(router.selectedTab, .catalog)
+        XCTAssertEqual(router.routes(for: .catalog), [.category(id: "gotovaya-eda", title: "gotovaya-eda")])
+    }
+
     func testExternalURLFallsBackToSystem() throws {
         let router = AppRouter()
         let result = router.handle(url: try XCTUnwrap(URL(string: "https://apple.com")))

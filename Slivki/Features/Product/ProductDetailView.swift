@@ -57,10 +57,16 @@ public struct ProductDetailView: View {
                     .foregroundStyle(SlivkiColor.textPrimary)
 
                 HStack(alignment: .firstTextBaseline) {
-                    Text(SlivkiMoney.format(product.price, currencyCode: product.currency))
-                        .font(.title2.weight(.bold))
+                    if product.hasPrice {
+                        Text(SlivkiMoney.format(product.price, currencyCode: product.currency))
+                            .font(.title2.weight(.bold))
+                    } else {
+                        Text("Цена уточняется")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(SlivkiColor.textSecondary)
+                    }
 
-                    if let oldPrice = product.oldPrice {
+                    if product.hasPrice, let oldPrice = product.oldPrice {
                         Text(SlivkiMoney.format(oldPrice, currencyCode: product.currency))
                             .font(.subheadline)
                             .foregroundStyle(SlivkiColor.textSecondary)
@@ -79,8 +85,8 @@ public struct ProductDetailView: View {
                         .foregroundStyle(SlivkiColor.textSecondary)
                 }
 
-                Label(product.isAvailable ? "Есть в наличии" : "Нет в наличии", systemImage: product.isAvailable ? "checkmark.circle" : "xmark.circle")
-                    .foregroundStyle(product.isAvailable ? SlivkiColor.brand : SlivkiColor.warning)
+                Label(product.canBeAddedToCart ? "Есть в наличии" : "Недоступно для заказа", systemImage: product.canBeAddedToCart ? "checkmark.circle" : "xmark.circle")
+                    .foregroundStyle(product.canBeAddedToCart ? SlivkiColor.brand : SlivkiColor.warning)
 
                 QuantityStepper(quantity: $quantity)
 
@@ -91,7 +97,7 @@ public struct ProductDetailView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!product.isAvailable)
+                .disabled(!product.canBeAddedToCart)
             }
             .padding(SlivkiSpacing.md)
         }

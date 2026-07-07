@@ -67,6 +67,13 @@ public final class AppRouter: ObservableObject {
             return slug.map { .product(id: $0) }
         }
 
+        let pathComponents = path.split(separator: "/").map(String.init)
+        if pathComponents.count >= 2,
+           pathComponents[0] == "catalog" || pathComponents[0] == "category" {
+            let categoryID = pathComponents[1]
+            return .category(id: categoryID, title: categoryID)
+        }
+
         if path == "/pages/rules.html" || path == "/pages/agreement.html" {
             return .legal(path: path)
         }

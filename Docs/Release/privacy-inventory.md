@@ -11,8 +11,8 @@ This inventory supports App Store privacy answers and review notes. Update it wh
 | Email | Support or account contact | Yes | Optional for MVP unless added to profile/checkout. |
 | Delivery address | Order fulfillment | Yes | Only collected when delivery is supported. |
 | Cart contents | Shopping cart and checkout | Yes when logged in | May exist anonymously before login. |
-| Order history | Customer support and repeat purchase | Yes | Visible in the app through `GET /orders`. |
-| Device push token | Push notifications | Yes or device-linked | Register through `POST /push-token`; permission must be optional. |
+| Order history | Customer support and repeat purchase | Yes | Include only when order history is enabled in the submitted build. |
+| Device push token | Push notifications | Yes or device-linked | Include only when APNs registration is enabled; permission must be optional. |
 | Crash diagnostics | Stability | Usually device-linked | Depends on Apple/Xcode or crash SDK configuration. |
 | Usage analytics | Product analytics | Depends on SDK | Add exact SDK and events before submission. |
 

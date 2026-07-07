@@ -96,7 +96,7 @@ private struct SearchProductRow: View {
                 Text(product.title)
                     .font(.headline)
                     .lineLimit(2)
-                Text(SlivkiMoney.format(product.price, currencyCode: product.currency))
+                Text(product.hasPrice ? SlivkiMoney.format(product.price, currencyCode: product.currency) : "Цена уточняется")
                     .foregroundStyle(SlivkiColor.textSecondary)
             }
 
@@ -106,7 +106,7 @@ private struct SearchProductRow: View {
                 Image(systemName: "cart.badge.plus")
             }
             .buttonStyle(.bordered)
-            .disabled(!product.isAvailable)
+            .disabled(!product.canBeAddedToCart)
         }
     }
 

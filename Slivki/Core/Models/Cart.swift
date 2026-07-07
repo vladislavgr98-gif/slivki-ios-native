@@ -61,6 +61,7 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id
         case productID = "productId"
+        case productIDSnake = "product_id"
         case title
         case price
         case quantity
@@ -70,7 +71,8 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
-        productID = try container.decode(String.self, forKey: .productID)
+        productID = try container.decodeIfPresent(String.self, forKey: .productID)
+            ?? container.decode(String.self, forKey: .productIDSnake)
         title = try container.decode(String.self, forKey: .title)
         price = try container.decode(Decimal.self, forKey: .price)
         quantity = try container.decode(Int.self, forKey: .quantity)

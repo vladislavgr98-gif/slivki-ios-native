@@ -29,6 +29,23 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(product.badges, ["new"])
     }
 
+    func testProductDecodesWhenLivePriceIsNull() throws {
+        let json = """
+        {
+          "id": 5119,
+          "title": "Товар без цены",
+          "price": { "current": null, "old": null, "currency": "RUB" },
+          "stock": { "count": 3, "available": true }
+        }
+        """.data(using: .utf8)!
+
+        let product = try JSONDecoder.slivki.decode(Product.self, from: json)
+
+        XCTAssertEqual(product.id, "5119")
+        XCTAssertFalse(product.hasPrice)
+        XCTAssertFalse(product.canBeAddedToCart)
+    }
+
     func testProductListResponseDecodesFromLiveDataShape() throws {
         let json = """
         {

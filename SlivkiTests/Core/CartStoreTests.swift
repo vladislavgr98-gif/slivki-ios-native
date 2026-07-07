@@ -34,6 +34,22 @@ final class CartStoreTests: XCTestCase {
         XCTAssertTrue(store.items.isEmpty)
     }
 
+    func testProductWithoutPriceCannotBeAdded() {
+        let store = CartStore()
+        let product = Product(
+            id: "no-price",
+            title: "No price",
+            imageURL: nil,
+            price: .zero,
+            hasPrice: false,
+            isAvailable: true
+        )
+
+        store.add(product: product)
+
+        XCTAssertTrue(store.items.isEmpty)
+    }
+
     func testCartTotalUpdatesAfterQuantityChanges() {
         let store = CartStore()
         let product = Fixtures.products[0]
