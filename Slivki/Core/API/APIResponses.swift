@@ -56,6 +56,7 @@ public struct BootstrapResponse: Decodable, Equatable {
     public let banners: [Banner]
     public let user: User?
     public let cart: Cart?
+    public let checkout: CheckoutOptions?
     public let featureFlags: [String: Bool]
     public let featuredProducts: ProductListResponse
 
@@ -69,6 +70,7 @@ public struct BootstrapResponse: Decodable, Equatable {
         case banners
         case user
         case cart
+        case checkout
         case featureFlags
         case featuredProducts
     }
@@ -93,6 +95,7 @@ public struct BootstrapResponse: Decodable, Equatable {
         banners = try container.decodeIfPresent([Banner].self, forKey: .banners) ?? []
         user = try container.decodeIfPresent(User.self, forKey: .user)
         cart = try container.decodeIfPresent(Cart.self, forKey: .cart)
+        checkout = try container.decodeIfPresent(CheckoutOptions.self, forKey: .checkout)
         featureFlags = try container.decodeIfPresent([String: Bool].self, forKey: .featureFlags) ?? [:]
         featuredProducts = try container.decodeIfPresent(ProductListResponse.self, forKey: .featuredProducts) ?? ProductListResponse()
     }
@@ -119,6 +122,64 @@ public struct ProductDetailResponse: Decodable, Equatable {
 public struct OrderListResponse: Decodable, Equatable {
     public let items: [Order]
     public let pagination: Pagination
+}
+
+public struct OrderCreateResponse: Decodable, Equatable {
+    public let order: Order
+}
+
+public struct OrderDetailResponse: Decodable, Equatable {
+    public let order: Order
+}
+
+public struct CartUpdateRequest: Encodable, Equatable {
+    public let items: [CartUpdateItem]
+
+    public init(items: [CartUpdateItem]) {
+        self.items = items
+    }
+
+    public init(cartItems: [CartItem]) {
+        self.items = cartItems.map(CartUpdateItem.init(cartItem:))
+    }
+}
+
+public struct CartUpdateItem: Encodable, Equatable {
+    public let productId: String
+    public let quantity: Int
+    public let title: String
+    public let price: Decimal
+    public let imageUrl: URL?
+
+    public init(productId: String, quantity: Int, title: String, price: Decimal, imageUrl: URL? = nil) {
+        self.productId = productId
+        self.quantity = quantity
+        self.title = title
+        self.price = price
+        self.imageUrl = imageUrl
+    }
+
+    public init(cartItem: CartItem) {
+        self.init(
+            productId: cartItem.productID,
+            quantity: cartItem.quantity,
+            title: cartItem.title,
+            price: cartItem.price,
+            imageUrl: cartItem.imageURL
+        )
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case productId
+        case quantity
+        case title
+        case price
+        case imageUrl
+    }
+}
+
+public struct CartResponse: Decodable, Equatable {
+    public let cart: Cart
 }
 
 public struct LoginRequest: Encodable, Equatable {

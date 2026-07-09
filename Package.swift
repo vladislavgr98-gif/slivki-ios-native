@@ -15,12 +15,13 @@ let package = Package(
         .target(
             name: "Slivki",
             path: "Slivki",
-            exclude: ["SlivkiApp.swift"]
+            exclude: ["SlivkiApp.swift", "Slivki.entitlements"]
         ),
         .testTarget(
             name: "SlivkiTests",
             dependencies: ["Slivki"],
-            path: "SlivkiTests"
+            path: "SlivkiTests",
+            resources: [.process("Fixtures")]
         )
     ]
 )

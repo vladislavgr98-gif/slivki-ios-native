@@ -21,6 +21,34 @@ public struct Product: Identifiable, Codable, Hashable {
         isAvailable && hasPrice
     }
 
+    /// Storefront cards show pack size under the title. Live API often omits `unit`,
+    /// so fall back to a trailing measure parsed from the product title.
+    public var displayUnit: String {
+        let trimmed = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, trimmed != "шт" {
+            return trimmed
+        }
+        if let parsed = Self.packSize(from: title) {
+            return parsed
+        }
+        return trimmed.isEmpty ? "шт" : trimmed
+    }
+
+    private static func packSize(from title: String) -> String? {
+        let pattern = #"(\d+(?:[.,]\d+)?\s?(?:г|кг|мл|л|шт)\.?)$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let range = NSRange(title.startIndex..<title.endIndex, in: title)
+        guard let match = regex.firstMatch(in: title, options: [], range: range),
+              let swiftRange = Range(match.range(at: 1), in: title) else {
+            return nil
+        }
+        return String(title[swiftRange])
+            .replacingOccurrences(of: ",", with: ".")
+            .trimmingCharacters(in: .whitespaces)
+    }
+
     public init(
         id: String,
         title: String,

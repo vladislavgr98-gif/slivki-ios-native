@@ -95,6 +95,104 @@ final class APIClientTests: XCTestCase {
         XCTAssertTrue(response.categories[0].children.isEmpty)
     }
 
+    func testAPIMetaDecodesProductionTimestamp() throws {
+        let json = """
+        {"apiVersion":"mobile-v1","generatedAt":"2026-07-09T10:17:53+00:00"}
+        """.data(using: .utf8)!
+
+        let meta = try JSONDecoder.slivki.decode(APIMeta.self, from: json)
+
+        XCTAssertEqual(meta.apiVersion, "mobile-v1")
+        XCTAssertNotNil(meta.generatedAt)
+    }
+
+    func testLiveBootstrapNetworkDecodes() async throws {
+        let client = APIClient()
+        let response: BootstrapResponse = try await client.get(.bootstrap)
+
+        XCTAssertFalse(response.categories.isEmpty)
+        XCTAssertFalse(response.featuredProducts.items.isEmpty)
+    }
+
+    func testLiveBootstrapFixtureDecodes() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/bootstrap-live.json")
+        let data = try Data(contentsOf: url)
+
+        let envelope = try JSONDecoder.slivki.decode(APIEnvelope<BootstrapResponse>.self, from: data)
+
+        XCTAssertTrue(envelope.success)
+        let bootstrap = try XCTUnwrap(envelope.data)
+        XCTAssertFalse(bootstrap.categories.isEmpty)
+        XCTAssertFalse(bootstrap.featuredProducts.items.isEmpty)
+    }
+
+    func testBootstrapResponseDecodesProductionEnvelope() throws {
+        let json = """
+        {
+          "success": true,
+          "meta": { "apiVersion": "mobile-v1", "generatedAt": "2026-07-09T10:17:53+00:00" },
+          "data": {
+            "site": { "name": "Сливки", "host": "https://slivki-shop.ru", "phone": "+7", "address": "addr", "hours": "8-20" },
+            "app": { "iosBundleId": "com.app.slivki", "currency": "RUB", "locale": "ru_RU" },
+            "navigation": {
+              "categories": [
+                {
+                  "id": 13896,
+                  "parentId": 1,
+                  "title": "Готовая еда",
+                  "slug": "gotovaja-eda",
+                  "url": "https://slivki-shop.ru/shop/gotovaja-eda/",
+                  "primaryImage": "https://slivki-shop.ru/upload/x.webp",
+                  "children": []
+                }
+              ]
+            },
+            "checkout": {
+              "paymentMethods": [
+                { "id": "cash", "title": "Наличными", "supportsNativeCheckout": true }
+              ]
+            },
+            "cart": {
+              "id": "mobile-local",
+              "items": [],
+              "totals": { "itemsTotal": 0, "discountTotal": 0, "deliveryTotal": null, "payableTotal": 0 },
+              "currency": "RUB",
+              "updatedAt": "2026-07-09T10:17:10+00:00"
+            },
+            "featuredProducts": {
+              "items": [
+                {
+                  "id": 5118,
+                  "title": "Товар",
+                  "slug": "promtovary/fairy",
+                  "category": { "id": 13730, "title": "Кат", "slug": null },
+                  "price": { "current": 195, "old": null, "currency": "RUB" },
+                  "stock": { "count": 3, "available": true },
+                  "type": "product",
+                  "unit": "шт",
+                  "primaryImage": "https://slivki-shop.ru/upload/item.webp",
+                  "description": "desc"
+                }
+              ],
+              "pagination": { "offset": 0, "limit": 20, "count": 1 }
+            }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let envelope = try JSONDecoder.slivki.decode(APIEnvelope<BootstrapResponse>.self, from: json)
+
+        XCTAssertTrue(envelope.success)
+        let bootstrap = try XCTUnwrap(envelope.data)
+        XCTAssertEqual(bootstrap.site?.name, "Сливки")
+        XCTAssertEqual(bootstrap.categories.count, 1)
+        XCTAssertEqual(bootstrap.featuredProducts.items.count, 1)
+        XCTAssertEqual(bootstrap.checkout?.paymentMethods.first?.id, "cash")
+    }
+
     func testBootstrapResponseDecodesFromLiveShape() throws {
         let json = """
         {
@@ -208,6 +306,60 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(response.product.id, "5118")
         XCTAssertEqual(response.product.price, Decimal(195))
         XCTAssertEqual(session.lastRequest?.url?.path, "/api/mobile/v1/products/5118")
+    }
+
+    func testClientPostsOrderDraftAndUnwrapsCreateEnvelope() async throws {
+        let session = MockSession(
+            data: """
+            {
+              "success": true,
+              "meta": { "apiVersion": "mobile-v1", "generatedAt": "2026-07-08T13:17:08+00:00" },
+              "data": {
+                "order": {
+                  "id": "mobile-draft-20260708",
+                  "number": "MOBILE-DRAFT-20260708",
+                  "status": "new",
+                  "createdAt": "2026-07-08T13:17:08+00:00",
+                  "totals": { "itemsTotal": 195, "discountTotal": 0, "deliveryTotal": null, "payableTotal": 195 },
+                  "items": [
+                    {
+                      "id": "5118",
+                      "product_id": "5118",
+                      "title": "Средство для мытья посуды FAIRY",
+                      "price": 195,
+                      "quantity": 1
+                    }
+                  ],
+                  "deliveryAddress": { "cityId": "lvov", "line1": "Тестовая 1" },
+                  "contactPhone": "+79991234567",
+                  "comment": "draft only",
+                  "mobileApiMode": "draft_only"
+                }
+              }
+            }
+            """.data(using: .utf8)!,
+            response: HTTPURLResponse(url: URL(string: "https://slivki-shop.ru")!, statusCode: 202, httpVersion: nil, headerFields: nil)!
+        )
+        let client = APIClient(session: session)
+        let draft = CheckoutDraft(customerName: "Test", phone: "+79991234567", city: "Львовский", address: "Тестовая 1", comment: "draft only")
+        let item = CartItem(
+            id: "5118",
+            productID: "5118",
+            title: "Средство для мытья посуды FAIRY",
+            price: Decimal(195),
+            quantity: 1,
+            selectedOptions: []
+        )
+
+        let response: OrderCreateResponse = try await client.post(.orders, body: CheckoutOrderDraft(draft: draft, items: [item], total: Decimal(195), paymentMethodID: "cash"))
+
+        XCTAssertEqual(response.order.number, "MOBILE-DRAFT-20260708")
+        XCTAssertEqual(response.order.total, Decimal(195))
+        XCTAssertEqual(response.order.items.first?.productID, "5118")
+        XCTAssertEqual(session.lastRequest?.httpMethod, "POST")
+        XCTAssertEqual(session.lastRequest?.url?.path, "/api/mobile/v1/orders")
+        XCTAssertEqual(session.lastRequestBodyString?.contains("\"customer_name\":\"Test\""), true)
+        XCTAssertEqual(session.lastRequestBodyString?.contains("\"product_id\":\"5118\""), true)
     }
 
     func testPostNoResponseAccepts204() async throws {

@@ -14,6 +14,22 @@ public final class AppRouter: ObservableObject {
         var initialPaths = Dictionary(uniqueKeysWithValues: AppTab.allCases.map { ($0, [AppRoute]()) })
         paths.forEach { initialPaths[$0.key] = $0.value }
         self.paths = initialPaths
+
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-tab-catalog") {
+            selectedTab = .catalog
+        } else if args.contains("-tab-cart") {
+            selectedTab = .cart
+        } else if args.contains("-tab-profile") {
+            selectedTab = .profile
+        }
+        if args.contains("-route-checkout") {
+            selectedTab = .cart
+            initialPaths[.cart] = [.checkout]
+            self.paths = initialPaths
+        }
+        #endif
     }
 
     public func pathBinding(for tab: AppTab) -> Binding<[AppRoute]> {
@@ -33,6 +49,10 @@ public final class AppRouter: ObservableObject {
         paths[targetTab, default: []].append(route)
     }
 
+    public func open(route: AppRoute) {
+        navigate(to: route, in: tab(for: route))
+    }
+
     public func reset(tab: AppTab? = nil) {
         if let tab {
             paths[tab] = []
@@ -46,6 +66,12 @@ public final class AppRouter: ObservableObject {
             return .systemAction
         }
 
+        if opensCatalogRoot(url.path) {
+            selectedTab = .catalog
+            paths[.catalog] = []
+            return .handled
+        }
+
         if let route = route(for: url) {
             navigate(to: route, in: tab(for: route))
             return .handled
@@ -54,17 +80,19 @@ public final class AppRouter: ObservableObject {
         return .systemAction
     }
 
+    private func opensCatalogRoot(_ path: String) -> Bool {
+        path == "/shop/catalog" || path == "/shop/catalog/"
+    }
+
     private func route(for url: URL) -> AppRoute? {
         let path = url.path
 
         if path.hasPrefix("/shop/"), path.hasSuffix(".html") {
             let slug = path
-                .split(separator: "/")
-                .last
-                .map(String.init)?
-                .replacingOccurrences(of: ".html", with: "")
+                .dropFirst("/shop/".count)
+                .dropLast(".html".count)
 
-            return slug.map { .product(id: $0) }
+            return .product(id: String(slug))
         }
 
         let pathComponents = path.split(separator: "/").map(String.init)
@@ -72,6 +100,20 @@ public final class AppRouter: ObservableObject {
            pathComponents[0] == "catalog" || pathComponents[0] == "category" {
             let categoryID = pathComponents[1]
             return .category(id: categoryID, title: categoryID)
+        }
+
+        if pathComponents.count >= 4,
+           pathComponents[0] == "users",
+           pathComponents[2] == "orders" {
+            return .order(id: pathComponents[3])
+        }
+
+        if pathComponents.count >= 2, pathComponents[0] == "orders" {
+            return .order(id: pathComponents[1])
+        }
+
+        if path == "/orders" || path == "/orders/" {
+            return .orders
         }
 
         if path == "/pages/rules.html" || path == "/pages/agreement.html" {
@@ -96,7 +138,7 @@ public final class AppRouter: ObservableObject {
             .home
         case .checkout:
             .cart
-        case .order, .legal:
+        case .favorites, .orders, .order, .legal:
             .profile
         }
     }

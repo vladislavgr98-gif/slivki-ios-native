@@ -1,0 +1,42 @@
+---
+description: Slivki project agent crew — when and how to delegate
+alwaysApply: true
+---
+
+# Slivki agent crew
+
+This project has specialized Cursor subagents in `.cursor/agents/`. Delegate with
+the Task tool / subagent invoke when the job matches. Do not reinvent roles.
+
+## Default routing
+
+| Work | Agent |
+| --- | --- |
+| SwiftUI screens, stores, decoding, Simulator fixes | `swift-expert` |
+| Multi-screen shopping feature / navigation + API | `mobile-app-developer` |
+| Small reproduced UI mismatch vs site screenshot | `ui-fixer` |
+| Layout/IA decision before big UI change | `ui-designer` |
+| Prod PHP / mobile API templates on server | `php-pro` |
+| New/changed API contract (cart/auth/orders/slug) | `api-designer` |
+| Failing test/build, crash, wrong runtime behavior | `debugger` |
+| Capture mobile-site evidence / DOM parity | `browser-debugger` |
+| After substantive diff: correctness review | `reviewer` |
+| Acceptance / release QA checklist | `qa-expert` |
+| Prod deploy / TestFlight rollout safety | `deployment-engineer` |
+| Auth/Keychain/secrets/SSH security check | `security-auditor` |
+
+## Working rules
+
+- Active goal: native SwiftUI parity with `https://slivki-shop.ru` mobile site.
+- Evidence first for UI: `Docs/Design/screenshots/` or live site capture.
+- Keep `swift test` and Xcode `Slivki` scheme green before calling a flow done.
+- Prefer smallest safe patch. No broad rewrite unless asked.
+- Never print private SSH keys. Use `ssh slivki-prod` / `ssh slivki-prod-admin`.
+- After non-trivial iOS or API change, run `reviewer` before finishing.
+- For UI parity passes, prefer `browser-debugger` → `ui-fixer` / `swift-expert`.
+
+## SSH / prod
+
+- Hosts configured locally: `slivki-prod`, `slivki-prod-admin`
+- Site root: `/var/www/www-root/data/www/slivki-shop.ru`
+- Safe prod edit: patch locally → `/tmp` → `php -l` → backup → install

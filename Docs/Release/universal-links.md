@@ -32,8 +32,11 @@ Do not add a `.json` extension to the deployed filename. A root fallback at `htt
 Keep Universal Link paths aligned with public website URLs, not `/api/mobile/v1` API routes.
 
 - Product links: `https://slivki-shop.ru/shop/.../<product-id-or-slug>.html`
-  - Current app router handles `/shop/*` URLs ending in `.html`.
-  - The router uses the last path component without `.html` as the product identifier, while the current mobile API product detail endpoint expects a numeric id. Do not add `/shop/*` to the deployed AASA file until the API supports slug lookup or public product URLs include a numeric id.
+  - Native router handles full slug path; mobile API resolves slug lookup.
+  - AASA template now includes `/shop/*`.
+- Order links: `https://slivki-shop.ru/users/<user-id>/orders/<order-id>`
+  - Native router opens `OrderDetailView` in profile tab.
+- Remove category components if real website category ids/slugs do not match the mobile API category filter used by the submitted app.
 - Category links: preferred templates are `https://slivki-shop.ru/catalog/<category-id-or-slug>` or `https://slivki-shop.ru/category/<category-id-or-slug>`.
   - Native category screens exist.
   - Current app router parses these URL shapes and uses the path id/slug as the native category id. Confirm live website category ids/slugs match the mobile API `category_id` contract before release.
@@ -48,7 +51,6 @@ Use [apple-app-site-association.template.json](./apple-app-site-association.temp
 - Replace `TEAM_ID` with the production Apple Team ID.
 - Replace `BUNDLE_ID` with `com.app.slivki` unless the final bundle id changes.
 - Add a `/shop/*` component only after product slug Universal Links open a real native product detail screen.
-- Remove category components if real website category ids/slugs do not match the mobile API category filter used by the submitted app.
 - Remove any path that does not open a useful native destination in the submitted build.
 
 ## Server Requirements

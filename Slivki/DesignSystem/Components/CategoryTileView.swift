@@ -8,22 +8,22 @@ public struct CategoryTileView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: SlivkiSpacing.xs) {
+        VStack(alignment: .leading, spacing: SlivkiSpacing.sm) {
             categoryImage
 
             Text(category.title)
-                .font(.subheadline.weight(.semibold))
+                .font(.footnote.weight(.bold))
                 .foregroundStyle(SlivkiColor.textPrimary)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(SlivkiSpacing.sm)
-        .frame(minHeight: 112, alignment: .topLeading)
+        .frame(minHeight: 136, alignment: .topLeading)
         .background(SlivkiColor.surface)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(SlivkiColor.border, lineWidth: 1)
+                .stroke(SlivkiColor.border.opacity(0.65), lineWidth: 1)
         )
     }
 
@@ -52,7 +52,7 @@ public struct CategoryTileView: View {
                 placeholderImage
             }
         }
-        .frame(height: 56)
+        .frame(height: 78)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 

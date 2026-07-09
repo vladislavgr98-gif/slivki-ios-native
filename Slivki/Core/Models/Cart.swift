@@ -34,6 +34,7 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
     public let id: String
     public let productID: String
     public let title: String
+    public let imageURL: URL?
     public let price: Decimal
     public var quantity: Int
     public let selectedOptions: [CartItemOption]
@@ -46,6 +47,7 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
         id: String,
         productID: String,
         title: String,
+        imageURL: URL? = nil,
         price: Decimal,
         quantity: Int,
         selectedOptions: [CartItemOption]
@@ -53,6 +55,7 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
         self.id = id
         self.productID = productID
         self.title = title
+        self.imageURL = imageURL
         self.price = price
         self.quantity = quantity
         self.selectedOptions = selectedOptions
@@ -63,6 +66,8 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
         case productID = "productId"
         case productIDSnake = "product_id"
         case title
+        case imageURL = "imageUrl"
+        case primaryImage
         case price
         case quantity
         case selectedOptions
@@ -74,6 +79,8 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
         productID = try container.decodeIfPresent(String.self, forKey: .productID)
             ?? container.decode(String.self, forKey: .productIDSnake)
         title = try container.decode(String.self, forKey: .title)
+        imageURL = try container.decodeIfPresent(URL.self, forKey: .imageURL)
+            ?? container.decodeIfPresent(URL.self, forKey: .primaryImage)
         price = try container.decode(Decimal.self, forKey: .price)
         quantity = try container.decode(Int.self, forKey: .quantity)
         selectedOptions = try container.decodeIfPresent([CartItemOption].self, forKey: .selectedOptions) ?? []
@@ -84,6 +91,7 @@ public struct CartItem: Identifiable, Codable, Equatable, Hashable {
         try container.encode(id, forKey: .id)
         try container.encode(productID, forKey: .productID)
         try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(imageURL, forKey: .imageURL)
         try container.encode(price, forKey: .price)
         try container.encode(quantity, forKey: .quantity)
         try container.encode(selectedOptions, forKey: .selectedOptions)

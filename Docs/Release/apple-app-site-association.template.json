@@ -4,14 +4,26 @@
     "details": [
       {
         "appIDs": [
-          "TEAM_ID.BUNDLE_ID"
+          "TEAM_ID.com.app.slivki"
         ],
         "components": [
+          {
+            "/": "/shop/*"
+          },
+          {
+            "/": "/shop/catalog"
+          },
           {
             "/": "/catalog/*"
           },
           {
             "/": "/category/*"
+          },
+          {
+            "/": "/orders/*"
+          },
+          {
+            "/": "/users/*/orders/*"
           },
           {
             "/": "/search*"

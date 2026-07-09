@@ -5,6 +5,7 @@ public struct CheckoutDraft: Equatable {
     public var phone: String
     public var city: String
     public var address: String
+    public var comment: String
 
     public var trimmedCustomerName: String {
         customerName.trimmedForCheckout
@@ -54,12 +55,59 @@ public struct CheckoutDraft: Equatable {
         customerName: String = "",
         phone: String = "",
         city: String = "",
-        address: String = ""
+        address: String = "",
+        comment: String = ""
     ) {
         self.customerName = customerName
         self.phone = phone
         self.city = city
         self.address = address
+        self.comment = comment
+    }
+}
+
+public struct CheckoutOrderDraft: Codable, Equatable {
+    public let customerName: String
+    public let phone: String
+    public let city: String
+    public let address: String
+    public let comment: String
+    public let paymentMethod: String
+    public let items: [CartItem]
+    public let total: Decimal
+    public let fulfillmentType: String?
+    public let addressId: String?
+    public let recipientId: String?
+    public let promoCode: String?
+    public let pickupAddress: String?
+    public let deliverySelections: [CheckoutDeliverySelection]?
+
+    public init(
+        draft: CheckoutDraft,
+        items: [CartItem],
+        total: Decimal,
+        paymentMethodID: String,
+        fulfillmentType: String? = nil,
+        addressId: String? = nil,
+        recipientId: String? = nil,
+        promoCode: String? = nil,
+        pickupAddress: String? = nil,
+        deliverySelections: [CheckoutDeliverySelection]? = nil
+    ) {
+        self.customerName = draft.trimmedCustomerName
+        self.phone = draft.normalizedPhone
+        self.city = draft.trimmedCity
+        self.address = draft.trimmedAddress
+        self.comment = draft.comment.trimmedForCheckout
+        self.paymentMethod = paymentMethodID
+        self.items = items
+        self.total = total
+        self.fulfillmentType = fulfillmentType
+        self.addressId = addressId
+        self.recipientId = recipientId
+        self.promoCode = promoCode
+        self.pickupAddress = pickupAddress
+        self.deliverySelections = deliverySelections
     }
 }
 

@@ -2,52 +2,73 @@ import SwiftUI
 
 public struct SearchView: View {
     @Environment(\.apiClient) private var apiClient
+    @EnvironmentObject private var bootstrapStore: BootstrapStore
     @EnvironmentObject private var cartStore: CartStore
+    @EnvironmentObject private var favoritesStore: FavoritesStore
     @EnvironmentObject private var router: AppRouter
     @State private var query: String
     @State private var state: LoadState<[Product]> = .idle
+    @State private var sort: ProductSort = .new
+    @State private var filters = ProductCatalogFilters()
 
     public init(initialQuery: String = "") {
         self._query = State(initialValue: initialQuery)
     }
 
     public var body: some View {
-        List {
-            switch state {
-            case .idle, .loading:
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-            case .failed(let message):
-                VStack(spacing: SlivkiSpacing.sm) {
-                    EmptyStateView("Ничего не найдено", systemImage: "magnifyingglass", message: message)
-                    Button("Повторить") {
-                        Task {
-                            await search()
-                        }
-                    }
-                    .buttonStyle(.bordered)
+        ScrollView {
+            VStack(alignment: .leading, spacing: SlivkiSpacing.lg) {
+                if !trimmedQuery.isEmpty {
+                    Text(trimmedQuery)
+                        .font(.title2.weight(.black))
+                        .foregroundStyle(SlivkiColor.textPrimary)
                 }
-            case .loaded(let results):
-                if results.isEmpty {
-                    EmptyStateView("Ничего не найдено", systemImage: "magnifyingglass")
-                } else {
-                    ForEach(results) { product in
-                        SearchProductRow(product: product) {
-                            cartStore.add(product: product)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            router.navigate(to: .product(id: product.id), in: .catalog)
-                        }
-                    }
+
+                ProductSortToolbar(sort: $sort, filters: $filters)
+                resultsContent
+                StorefrontFooter(
+                    site: bootstrapStore.site,
+                    onFavorites: { router.navigate(to: .favorites, in: .catalog) },
+                    onAbout: { router.navigate(to: .legal(path: "/pages/rules.html"), in: .catalog) },
+                    onFeedback: { router.selectedTab = .profile },
+                    onRules: { router.navigate(to: .legal(path: "/pages/rules.html"), in: .catalog) },
+                    onAgreement: { router.navigate(to: .legal(path: "/pages/agreement.html"), in: .catalog) }
+                )
+            }
+            .padding(SlivkiSpacing.md)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(alignment: .leading, spacing: SlivkiSpacing.sm) {
+                StorefrontHeader(
+                    variant: .home,
+                    siteName: bootstrapStore.site?.name ?? "Сливки"
+                )
+                SlivkiSearchBar(text: $query) {
+                    Task { await search() }
                 }
+                StorefrontDeliveryStrip()
+            }
+            .padding(.horizontal, SlivkiSpacing.md)
+            .padding(.top, SlivkiSpacing.md)
+            .padding(.bottom, SlivkiSpacing.sm)
+            .background(SlivkiColor.surface)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(SlivkiColor.border.opacity(0.8))
+                    .frame(height: 1)
             }
         }
+        .background(SlivkiColor.groupedBackground)
         .navigationTitle("Поиск")
-        .searchable(text: $query, prompt: "Товар, категория или бренд")
-        .task(id: query) {
+        .slivkiHideNavigationBar()
+        .task(id: "\(trimmedQuery)-\(sort.rawValue)-\(filters.inStockOnly)-\(filters.onSaleOnly)") {
             try? await Task.sleep(nanoseconds: 250_000_000)
             guard !Task.isCancelled else {
+                return
+            }
+
+            guard !trimmedQuery.isEmpty else {
+                state = .idle
                 return
             }
 
@@ -55,17 +76,91 @@ public struct SearchView: View {
         }
     }
 
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    @ViewBuilder
+    private var resultsContent: some View {
+        if trimmedQuery.isEmpty {
+            SlivkiCard {
+                Text("Введите запрос в поле поиска выше")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(SlivkiColor.textSecondary)
+            }
+        } else {
+            switch state {
+            case .idle, .loading:
+                SlivkiCard {
+                    HStack(spacing: SlivkiSpacing.sm) {
+                        ProgressView()
+                        Text("Ищем товары")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(SlivkiColor.textSecondary)
+                    }
+                }
+            case .failed(let message):
+                SlivkiCard {
+                    VStack(alignment: .leading, spacing: SlivkiSpacing.md) {
+                        EmptyStateView("Ничего не найдено", systemImage: "magnifyingglass", message: message)
+                        Button("Повторить") {
+                            Task {
+                                await search()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            case .loaded(let results):
+                if results.isEmpty {
+                    SlivkiCard {
+                        EmptyStateView("Ничего не найдено", systemImage: "magnifyingglass", message: "Попробуйте другой запрос.")
+                    }
+                } else {
+                    productGrid(results)
+                }
+            }
+        }
+    }
+
+    private func productGrid(_ products: [Product]) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: SlivkiSpacing.sm), GridItem(.flexible(), spacing: SlivkiSpacing.sm)], spacing: SlivkiSpacing.sm) {
+            ForEach(products) { product in
+                ProductCardView(
+                    product: product,
+                    cartQuantity: cartStore.quantity(forProductID: product.id),
+                    isFavorite: favoritesStore.contains(product),
+                    onFavoriteToggle: {
+                        favoritesStore.toggle(product)
+                    },
+                    onQuantityChange: { quantity in
+                        cartStore.setProductQuantity(product: product, quantity: quantity)
+                    }
+                )
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    router.navigate(to: .product(id: product.id), in: .catalog)
+                }
+            }
+        }
+    }
+
     private func search() async {
         state = .loading
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedQuery.isEmpty else {
+            state = .idle
+            return
+        }
 
         do {
             let response: ProductListResponse = try await apiClient.get(.products(
                 categoryID: nil,
-                query: trimmed.isEmpty ? nil : trimmed,
-                sort: .new,
+                query: trimmedQuery,
+                sort: sort,
                 page: 1,
-                perPage: 40
+                perPage: 40,
+                filters: filters
             ))
             guard !Task.isCancelled else {
                 return
@@ -74,73 +169,10 @@ public struct SearchView: View {
         } catch is CancellationError {
             return
         } catch {
-            let fallback = trimmed.isEmpty
-                ? Fixtures.products
-                : Fixtures.products.filter { $0.title.localizedCaseInsensitiveContains(trimmed) }
+            let fallback = Fixtures.products.filter { $0.title.localizedCaseInsensitiveContains(trimmedQuery) }
             state = fallback.isEmpty
                 ? .failed("Попробуйте изменить запрос или повторить поиск.")
                 : .loaded(fallback)
         }
-    }
-}
-
-private struct SearchProductRow: View {
-    let product: Product
-    let onAdd: () -> Void
-
-    var body: some View {
-        HStack(spacing: SlivkiSpacing.md) {
-            productImage
-
-            VStack(alignment: .leading, spacing: SlivkiSpacing.xs) {
-                Text(product.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                Text(product.hasPrice ? SlivkiMoney.format(product.price, currencyCode: product.currency) : "Цена уточняется")
-                    .foregroundStyle(SlivkiColor.textSecondary)
-            }
-
-            Spacer()
-
-            Button(action: onAdd) {
-                Image(systemName: "cart.badge.plus")
-            }
-            .buttonStyle(.bordered)
-            .disabled(!product.canBeAddedToCart)
-        }
-    }
-
-    private var productImage: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(SlivkiColor.groupedBackground)
-
-            if let imageURL = product.imageURL {
-                AsyncImage(url: imageURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFit()
-                            .padding(SlivkiSpacing.xs)
-                    case .failure:
-                        placeholder
-                    case .empty:
-                        ProgressView()
-                    @unknown default:
-                        placeholder
-                    }
-                }
-            } else {
-                placeholder
-            }
-        }
-        .frame(width: 56, height: 56)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var placeholder: some View {
-        Image(systemName: "photo")
-            .foregroundStyle(SlivkiColor.textSecondary)
     }
 }

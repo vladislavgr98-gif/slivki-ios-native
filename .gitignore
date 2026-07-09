@@ -8,6 +8,7 @@ xcuserdata/
 *.mobileprovision
 *.p12
 .env
+.swiftpm/xcode/package.xcworkspace/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
 .build/
 Package.resolved

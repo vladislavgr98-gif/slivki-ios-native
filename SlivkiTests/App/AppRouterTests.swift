@@ -9,7 +9,7 @@ final class AppRouterTests: XCTestCase {
 
         XCTAssertEqual(result, .handled)
         XCTAssertEqual(router.selectedTab, .home)
-        XCTAssertEqual(router.routes(for: .home), [.product(id: "product-123")])
+        XCTAssertEqual(router.routes(for: .home), [.product(id: "test/product-123")])
     }
 
     func testRulesURLRoutesToProfileLegalPage() throws {
@@ -37,6 +37,24 @@ final class AppRouterTests: XCTestCase {
         XCTAssertEqual(result, .handled)
         XCTAssertEqual(router.selectedTab, .catalog)
         XCTAssertEqual(router.routes(for: .catalog), [.category(id: "gotovaya-eda", title: "gotovaya-eda")])
+    }
+
+    func testCatalogRootURLOpensCatalogTab() throws {
+        let router = AppRouter(paths: [.catalog: [.category(id: "1", title: "Test")]])
+        let result = router.handle(url: try XCTUnwrap(URL(string: "https://slivki-shop.ru/shop/catalog")))
+
+        XCTAssertEqual(result, .handled)
+        XCTAssertEqual(router.selectedTab, .catalog)
+        XCTAssertTrue(router.routes(for: .catalog).isEmpty)
+    }
+
+    func testUserOrderURLRoutesToOrderDetail() throws {
+        let router = AppRouter()
+        let result = router.handle(url: try XCTUnwrap(URL(string: "https://slivki-shop.ru/users/42/orders/991")))
+
+        XCTAssertEqual(result, .handled)
+        XCTAssertEqual(router.selectedTab, .profile)
+        XCTAssertEqual(router.routes(for: .profile), [.order(id: "991")])
     }
 
     func testExternalURLFallsBackToSystem() throws {

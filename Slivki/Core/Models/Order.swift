@@ -10,6 +10,7 @@ public struct Order: Identifiable, Codable, Hashable {
     public let deliveryAddress: Address?
     public let contactPhone: String?
     public let comment: String?
+    public let paymentTitle: String?
 
     public var total: Decimal {
         totals.payableTotal
@@ -24,7 +25,8 @@ public struct Order: Identifiable, Codable, Hashable {
         items: [CartItem],
         deliveryAddress: Address? = nil,
         contactPhone: String? = nil,
-        comment: String? = nil
+        comment: String? = nil,
+        paymentTitle: String? = nil
     ) {
         self.id = id
         self.number = number
@@ -35,6 +37,20 @@ public struct Order: Identifiable, Codable, Hashable {
         self.deliveryAddress = deliveryAddress
         self.contactPhone = contactPhone
         self.comment = comment
+        self.paymentTitle = paymentTitle
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case number
+        case status
+        case createdAt
+        case totals
+        case items
+        case deliveryAddress
+        case contactPhone
+        case comment
+        case paymentTitle = "paymentName"
     }
 }
 
@@ -46,6 +62,36 @@ public enum OrderStatus: String, Codable, Hashable {
     case shipped
     case completed
     case cancelled
+
+    public var title: String {
+        switch self {
+        case .new:
+            return "Новый"
+        case .confirmed:
+            return "Подтвержден"
+        case .paid:
+            return "Оплачен"
+        case .assembling:
+            return "Собирается"
+        case .shipped:
+            return "Доставляется"
+        case .completed:
+            return "Завершен"
+        case .cancelled:
+            return "Отменен"
+        }
+    }
+
+    public var timelineSteps: [OrderStatus] {
+        [.new, .confirmed, .assembling, .shipped, .completed]
+    }
+
+    public var timelineIndex: Int? {
+        if self == .cancelled {
+            return nil
+        }
+        return timelineSteps.firstIndex(of: self)
+    }
 }
 
 public struct Address: Codable, Equatable, Hashable {

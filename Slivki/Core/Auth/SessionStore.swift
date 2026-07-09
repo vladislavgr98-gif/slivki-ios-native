@@ -79,8 +79,32 @@ public final class SessionStore: ObservableObject {
         currentUser = user
     }
 
+    public func applyWebSession(user: User) throws {
+        try applyLogin(token: CallFirstAuthService.webSessionToken, user: user)
+    }
+
+    public func applyBootstrap(user: User?) {
+        guard hasStoredToken else {
+            return
+        }
+        currentUser = user
+    }
+
     public func logout() {
         try? tokenStore.clearToken()
         currentUser = nil
+    }
+
+    public func syncMobileToken(using authService: CallFirstAuthService = CallFirstAuthService()) async {
+        guard sessionToken == CallFirstAuthService.webSessionToken else {
+            return
+        }
+
+        do {
+            let response = try await authService.exchangeMobileToken()
+            try applyLogin(token: response.accessToken, user: response.user)
+        } catch {
+            // Keep the web session marker until the next bootstrap refresh.
+        }
     }
 }

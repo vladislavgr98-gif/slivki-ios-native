@@ -43,6 +43,10 @@ public struct APIClient {
         return try await send(endpoint, method: "PUT", body: encoded)
     }
 
+    public func delete<Response: Decodable>(_ endpoint: APIEndpoint) async throws -> Response {
+        try await send(endpoint, method: "DELETE", body: Optional<Data>.none)
+    }
+
     public func postNoResponse<Body: Encodable>(_ endpoint: APIEndpoint, body: Body) async throws {
         let encoded = try encode(body)
         try await sendNoResponse(endpoint, method: "POST", body: encoded)
@@ -140,9 +144,47 @@ public extension JSONDecoder {
     static var slivki: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom(Self.decodeDate)
         return decoder
     }
+
+    private static func decodeDate(_ decoder: Decoder) throws -> Date {
+        let container = try decoder.singleValueContainer()
+        if let timestamp = try? container.decode(Double.self) {
+            return Date(timeIntervalSince1970: timestamp)
+        }
+
+        let value = try container.decode(String.self)
+        let formatters = [
+            ISO8601DateFormatter.slivki,
+            ISO8601DateFormatter.slivkiFractional
+        ]
+
+        for formatter in formatters {
+            if let date = formatter.date(from: value) {
+                return date
+            }
+        }
+
+        throw DecodingError.dataCorruptedError(
+            in: container,
+            debugDescription: "Unsupported date format: \(value)"
+        )
+    }
+}
+
+private extension ISO8601DateFormatter {
+    static let slivki: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static let slivkiFractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
 }
 
 public extension JSONEncoder {

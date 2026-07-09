@@ -19,7 +19,7 @@ It is not the runtime surface of the app.
 | Product cards | `ProductCardView` |
 | Product detail page | `ProductDetailView` |
 | Cart page | `CartView` |
-| Profile/login area | `ProfileView` and native login fields |
+| Profile/login area | `LoginView` — call-first auth (phone → free call → email fallback → register) |
 | Rules/agreement pages | `LegalWebView` fallback only |
 
 ## UI Direction
@@ -30,15 +30,15 @@ It is not the runtime surface of the app.
 - Use native search, quantity controls, forms, loading states, and error states.
 - Use `WKWebView` only for legal/static pages while native replacements are not ready.
 
-## Screenshot Capture TODO
+## Captured Reference Screenshots
 
-Capture reference screenshots on a Mac or browser automation pass:
+Reference screenshots captured with a mobile browser viewport:
 
 - `Docs/Design/screenshots/home-mobile.png`
 - `Docs/Design/screenshots/catalog-mobile.png`
 - `Docs/Design/screenshots/product-mobile.png`
 - `Docs/Design/screenshots/cart-mobile.png`
 - `Docs/Design/screenshots/profile-mobile.png`
+- `Docs/Design/screenshots/search-mobile.png`
 
-Do not block SwiftUI implementation on screenshots; use them to refine visual details
-after the app shell and API contract are stable.
+Use these files for parity checks before each UI pass.
